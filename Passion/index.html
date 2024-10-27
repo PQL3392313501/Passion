@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多功能工具集</title>
+    <link rel="stylesheet" href="css/element-ui.min.css">
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        #output,
+        #sqlOutput {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            min-height: 200px;
+            overflow-y: auto;
+        }
+
+        .no-icon-message .el-message__icon {
+            display: none;
+        }
+
+        .custom-notify {
+            background-color: #f0ad4e;
+            /* 自定义背景颜色 */
+            color: #fff;
+            /* 自定义文字颜色 */
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app" class="container-fluid">
+        <div class="row">
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 content">
+                <el-tabs v-model="activeTab">
+                    <el-tab-pane label="Curl转Python" name="curlToPython">
+                        <h3 class="mb-4">Curl转Python工具</h3>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <el-input type="textarea" id="curlInput" placeholder="在这里粘贴您的Curl命令..."
+                                    v-model="curlCommand" :autosize="{ minRows: 6, maxRows: 6 }"
+                                    style="width: 100%; overflow-y: auto;">
+                                </el-input>
+                                <el-button type="primary" style='margin-top: 10px;' class="mt-2"
+                                    @click="convertCurlToPython">转换为Python</el-button>
+                            </div>
+                            <div class="col-md-6">
+                                <pre id="output" class="mb-2" style="height: 200px; overflow-y: auto;"></pre>
+                                <el-button type="secondary" @click="copyToClipboard('output')">复制代码</el-button>
+                            </div>
+                        </div>
+                    </el-tab-pane>
+
+                    <el-tab-pane label="SQL转换" name="sqlConvert">
+                        <h3 class="mb-4">SQL转换工具</h3>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <el-input type="textarea" id="sqlInput" placeholder="字符串内容粘贴在这里..." v-model="sqlInput"
+                                    :autosize="{ minRows: 6, maxRows: 6 }" style="width: 100%; overflow-y: auto;">
+                                </el-input>
+                                <el-button type="primary" style='margin-top: 10px;' class="mt-2"
+                                    @click="strTransToReplace">转换</el-button>
+                            </div>
+                            <div class="col-md-6">
+                                <pre id="sqlOutput" class="mb-2" style="height: 200px; overflow-y: auto;"></pre>
+                                <el-button type="secondary" @click="copyToClipboard('sqlOutput')">复制代码</el-button>
+                            </div>
+                        </div>
+                    </el-tab-pane>
+
+                    <el-tab-pane label="SQL批量生成" name="sqlBatch">
+                        <h3 class="mb-4">SQL批量生成工具</h3>
+                        <!-- 仅保留标题展示 -->
+                    </el-tab-pane>
+                </el-tabs>
+            </main>
+        </div>
+    </div>
+
+    <script src="js/vue.min.js"></script>
+    <script src="js/element-ui.min.js"></script>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                activeTab: 'curlToPython',
+                curlCommand: '',
+                sqlInput: '',
+                connectors: ['`', '~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '=', '+', '[',
+                    ']', '{', '}', '|', '\\', ';', ':', "'", '"', ',', '<', '.', '>', '/', '?', '、', '【',
+                    '】', '《', '》', '！', '（', '）', '？', '“', '”', '’', '‘', '；', '：', '，', '。', '《', '》',
+                    '〈', '〉', '——', '……', '—', '·', '•', '♦', '❤', '❥', '⇔', '⇒', '⇐', '⇑', '⇓', '↔', '↕',
+                    '↖', '↗', '↘', '↙', '↑', '↓', '←', '→', '⬆', '⬇', '⬅', '➡', '⤴', '⤵', '▲', '▼', '◄',
+                    '►', '◀', '▶', '♠', '♣', '♥', '♦', '♤', '♧', '♡', '♢', '♚', '♛', '♜', '♝', '♞', '♟',
+                    '☉', '☺', '☹', '☻', '☼', '☽', '☾', '♀', '♂', '♄', '♅', '♆', '♇', '♈', '♉', '♊', '♋',
+                    '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '♪', '♫', '♬', '♩', '♭', '♮', '♯', '﹋', '﹌',
+                    '﹍', '﹎', '﹏', '﹐', '﹑', '﹒', '﹔', '﹕', '﹖', '﹗', '﹙', '﹚', '﹛', '﹜', '﹝', '﹞', '﹟',
+                    '﹠', '﹡', '﹢', '﹣', '﹤', '﹥', '﹦', '﹨', '﹩', '﹪', '﹫', '！', '＂', '＃', '＄', '％', '＆',
+                    '＇', '（', '）', '＊', '＋', '，', '－', '．', '／', '：', '；', '＜', '＝', '＞', '？', '＠', '［',
+                    '＼', '］', '＾', '＿', '｀', '｛', '｜', '｝', '～', '\n', '\t', ' '
+                ] // 符号字典
+            },
+            methods: {
+                handleSelect(key) {
+                    this.activeTab = key;
+                },
+                convertCurlToPython() {
+                    const curlCommand = this.curlCommand;
+                    let pythonCode = "import requests\n\n";
+
+                    const urlMatch = curlCommand.match(/'(https?:\/\/[^']+)'/);
+                    if (urlMatch) {
+                        pythonCode += `url = '${urlMatch[1]}'\n`;
+                    } else {
+                        document.getElementById('output').textContent = "无法解析 URL，请检查 Curl 命令格式。";
+                        return;
+                    }
+
+                    let method = "GET";
+                    if (curlCommand.includes("-X POST") || curlCommand.includes("--data")) {
+                        method = "POST";
+                    }
+
+                    const headers = {};
+                    const headerMatches = curlCommand.matchAll(/-H '([^:]+): ([^']+)'/g);
+                    for (const match of headerMatches) {
+                        headers[match[1]] = match[2];
+                    }
+
+                    if (Object.keys(headers).length > 0) {
+                        pythonCode += "headers = " + JSON.stringify(headers, null, 4) + "\n";
+                    }
+
+                    const dataMatch = curlCommand.match(/--data '(.+)'/);
+                    if (dataMatch) {
+                        pythonCode += `data = '${dataMatch[1]}'\n`;
+                    }
+
+                    pythonCode += "\nresponse = requests.";
+                    pythonCode += method.toLowerCase() + "(url";
+                    if (Object.keys(headers).length > 0) {
+                        pythonCode += ", headers=headers";
+                    }
+                    if (dataMatch) {
+                        pythonCode += ", data=data";
+                    }
+                    pythonCode += ")\n\n";
+
+                    pythonCode += "print(response.status_code)\n";
+                    pythonCode += "print(response.text)\n";
+
+                    document.getElementById('output').textContent = pythonCode;
+                },
+                copyToClipboard(outputId) {
+                    const output = document.getElementById(outputId);
+                    const range = document.createRange();
+                    range.selectNode(output);
+                    window.getSelection().removeAllRanges();
+                    window.getSelection().addRange(range);
+                    document.execCommand('copy');
+                    window.getSelection().removeAllRanges();
+
+                    this.$message({
+                        message: '代码成功复制到剪贴板！今天又节省了效率可以摸鱼了，财运+1！！！',
+                        type: 'success',
+                        customClass: ' no-icon-message'
+                    });
+                },
+                strTransToReplace() {
+                    let src = this.sqlInput.trim();
+                    if (src.includes('"') && src.includes(',')) {
+                        src = src.replace(/["]/g, '').replace(/[,]/g, '').trim();
+                        document.getElementById('sqlOutput').textContent = src.replace(/[,]/g, ',\n') + '\n';
+                    } else if (src.includes("'") && src.includes(',')) {
+                        src = src.replace(/[']/g, '').replace(/[,]/g, '').trim();
+                        document.getElementById('sqlOutput').textContent = src.replace(/[,]/g, ',\n') + '\n';
+                    } else {
+                        if (src) {
+                            this.connectors.forEach(connector => {
+                                src = src.replace(new RegExp(`\\${connector}`, 'g'), ',');
+                            });
+                            const splitStrings = src.split(',');
+                            let result = "";
+                            splitStrings.forEach(s => {
+                                s = s.trim('"');
+                                if (s) {
+                                    result += `'${s.trim()}',\n`;
+                                }
+                            });
+                            result = result.replace(/,\n$/, '');
+                            document.getElementById('sqlOutput').textContent = result;
+                        } else {
+                            document.getElementById('sqlOutput').textContent = '';
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
